@@ -15,11 +15,32 @@ function ReportComplaint() {
   const [area, setArea] = useState('')
   const [pincode, setPincode] = useState('')
 
-  // PHOTO SELECTION
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // PHOTO SELECTION AND VALIDATION
   const handlePhotoChange = (event) => {
-    const selectedPhoto = event.target.files[0]
+    const selectedPhoto = event.target.files?.[0]
 
     if (!selectedPhoto) {
+      setPhoto(null)
+      setPhotoPreview('')
+      return
+    }
+
+    if (!selectedPhoto.type.startsWith('image/')) {
+      alert('Please select a valid image file.')
+      event.target.value = ''
+      setPhoto(null)
+      setPhotoPreview('')
+      return
+    }
+
+    // Maximum upload size: 5 MB
+    if (selectedPhoto.size > 5 * 1024 * 1024) {
+      alert('Photo size must not exceed 5 MB.')
+      event.target.value = ''
+      setPhoto(null)
+      setPhotoPreview('')
       return
     }
 
@@ -27,8 +48,16 @@ function ReportComplaint() {
 
     const reader = new FileReader()
 
-    reader.onloadend = () => {
-      setPhotoPreview(reader.result)
+    reader.onload = () => {
+      setPhotoPreview(
+        typeof reader.result === 'string' ? reader.result : ''
+      )
+    }
+
+    reader.onerror = () => {
+      alert('Unable to read the selected photo. Please try again.')
+      setPhoto(null)
+      setPhotoPreview('')
     }
 
     reader.readAsDataURL(selectedPhoto)
@@ -38,62 +67,153 @@ function ReportComplaint() {
   const handleSubmit = async (event) => {
     event.preventDefault()
 
+    if (isSubmitting) return
+
+    const trimmedLocation = location.trim()
+    const trimmedArea = area.trim()
+    const trimmedDescription = description.trim()
+    const trimmedPincode = pincode.trim()
+
+    if (
+      !complaintType ||
+      !trimmedDescription ||
+      !trimmedLocation ||
+      !trimmedArea ||
+      !trimmedPincode
+    ) {
+      alert('Please fill in all required fields.')
+      return
+    }
+
+    if (!/^[0-9]{6}$/.test(trimmedPincode)) {
+      alert('Please enter a valid 6-digit pincode.')
+      return
+    }
+
+    // Read the currently logged-in citizen, if available.
+    let citizen = {}
+
+    try {
+      citizen = JSON.parse(localStorage.getItem('citizenUser') || '{}')
+    } catch {
+      citizen = {}
+    }
+
     const year = new Date().getFullYear()
     const randomNumber = Math.floor(10000 + Math.random() * 90000)
-
     const newComplaintId = `NBT-${year}-${randomNumber}`
 
-    const newComplaint = {
+    const complaintPayload = {
       id: newComplaintId,
+
+      citizen_name:
+        citizen.name ||
+        citizen.fullName ||
+        citizen.citizen_name ||
+        'Unknown',
+
+      citizen_email:
+        citizen.email ||
+        citizen.citizen_email ||
+        null,
+
+      citizen_phone:
+        citizen.phone ||
+        citizen.mobile ||
+        citizen.citizen_phone ||
+        null,
+
       type: complaintType,
-      description: description,
-      location: location,
-      area: area,
-      pincode: pincode,
+      description: trimmedDescription,
+      location: trimmedLocation,
+      area: trimmedArea,
+      pincode: trimmedPincode,
+
       status: 'Registered',
       priority: 'Medium',
-      date: new Date().toLocaleString(),
-      isNew: true,
+
       photoName: photo ? photo.name : '',
       photoPreview: photoPreview
     }
 
-    // SEND TO PHP BACKEND
+    setIsSubmitting(true)
+
     try {
       const response = await fetch(
-        'http://localhost:8000/complaints.php',
+        'https://thenightbulbportal.infinityfree.me/complaints.php',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(newComplaint)
+          body: JSON.stringify(complaintPayload)
         }
       )
 
-      const data = await response.json()
+      let data
+
+      try {
+        data = await response.json()
+      } catch {
+        throw new Error(
+          'The PHP server did not return valid JSON. Check the backend.'
+        )
+      }
 
       console.log('PHP Backend Response:', data)
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || 'Complaint could not be saved to the database.'
+        )
+      }
+
+      // Store the saved image URL, not the large Base64 image.
+      const savedComplaint = {
+        ...complaintPayload,
+        photoPreview: data.photo_url || '',
+        photoName: photo ? photo.name : '',
+        date: new Date().toLocaleString(),
+        isNew: true
+      }
+
+      // Keep the existing localStorage functionality.
+      let existingComplaints = []
+
+      try {
+        existingComplaints = JSON.parse(
+          localStorage.getItem('complaints') || '[]'
+        )
+
+        if (!Array.isArray(existingComplaints)) {
+          existingComplaints = []
+        }
+      } catch {
+        existingComplaints = []
+      }
+
+      existingComplaints.push(savedComplaint)
+
+      localStorage.setItem(
+        'complaints',
+        JSON.stringify(existingComplaints)
+      )
+
+      localStorage.setItem('complaintId', newComplaintId)
+      localStorage.setItem('complaintStatus', 'Registered')
+
+      setComplaintId(newComplaintId)
+      setSubmitted(true)
     } catch (error) {
-      console.error('PHP Backend connection failed:', error)
+      console.error('Complaint submission failed:', error)
+
+      alert(
+        error.message ||
+        'Unable to submit the complaint. Please check whether the PHP backend is running.'
+      )
+    } finally {
+      setIsSubmitting(false)
     }
-
-    // SAVE FOR OFFICER DASHBOARD
-    const existingComplaints =
-      JSON.parse(localStorage.getItem('complaints')) || []
-
-    existingComplaints.push(newComplaint)
-
-    localStorage.setItem(
-      'complaints',
-      JSON.stringify(existingComplaints)
-    )
-
-    localStorage.setItem('complaintId', newComplaintId)
-    localStorage.setItem('complaintStatus', 'Registered')
-
-    setComplaintId(newComplaintId)
-    setSubmitted(true)
   }
 
   // SUCCESS PAGE
@@ -167,11 +287,9 @@ function ReportComplaint() {
   // REPORT FORM
   return (
     <div className="report-page">
-
       <div className="report-container">
 
         {/* HEADER */}
-
         <div className="report-header">
 
           <Link
@@ -203,7 +321,6 @@ function ReportComplaint() {
         </div>
 
         {/* TITLE */}
-
         <div className="report-title">
 
           <span>
@@ -221,14 +338,12 @@ function ReportComplaint() {
         </div>
 
         {/* FORM CARD */}
-
         <form
           className="report-card"
           onSubmit={handleSubmit}
         >
 
           {/* SECTION 1 */}
-
           <div className="form-section">
 
             <div className="section-label">
@@ -299,7 +414,6 @@ function ReportComplaint() {
           </div>
 
           {/* SECTION 2 */}
-
           <div className="form-section">
 
             <div className="section-label">
@@ -362,12 +476,16 @@ function ReportComplaint() {
 
                   <input
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]{6}"
                     value={pincode}
                     onChange={(event) =>
-                      setPincode(event.target.value)
+                      setPincode(
+                        event.target.value.replace(/\D/g, '').slice(0, 6)
+                      )
                     }
                     placeholder="Enter pincode"
-                    maxLength="6"
+                    maxLength={6}
                     required
                   />
 
@@ -380,7 +498,6 @@ function ReportComplaint() {
           </div>
 
           {/* SECTION 3 */}
-
           <div className="form-section">
 
             <div className="section-label">
@@ -402,7 +519,7 @@ function ReportComplaint() {
                 <input
                   id="complaint-photo"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={handlePhotoChange}
                 />
 
@@ -413,7 +530,7 @@ function ReportComplaint() {
                   </strong>
 
                   <span>
-                    JPG, JPEG or PNG image
+                    JPG, JPEG, PNG or WebP image (maximum 5 MB)
                   </span>
 
                 </label>
@@ -448,7 +565,6 @@ function ReportComplaint() {
           </div>
 
           {/* SECTION 4 */}
-
           <div className="form-section">
 
             <div className="section-label">
@@ -468,8 +584,11 @@ function ReportComplaint() {
               <button
                 type="submit"
                 className="submit-complaint"
+                disabled={isSubmitting}
               >
-                Submit Complaint
+                {isSubmitting
+                  ? 'Submitting Complaint...'
+                  : 'Submit Complaint'}
               </button>
 
             </div>
@@ -479,7 +598,6 @@ function ReportComplaint() {
         </form>
 
       </div>
-
     </div>
   )
 }

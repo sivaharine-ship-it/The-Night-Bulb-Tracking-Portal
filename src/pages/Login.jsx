@@ -1,71 +1,64 @@
+
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import './Login.css'
 
 function Login() {
-
   const navigate = useNavigate()
-
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
 
-
-  const handleLogin = (event) => {
-
+  const handleLogin = async (event) => {
     event.preventDefault()
-
     setError('')
 
+    try {
+     const response = await fetch(
+  'https://thenightbulbportal.infinityfree.me/login.php',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      email: email.trim(),
+      password: password
+    })
+  }
+) 
 
-    const savedUser =
-      JSON.parse(localStorage.getItem('citizenUser'))
+      const data = await response.json()
 
+      if (!response.ok || !data.success) {
+        setError(
+          data.message ||
+          'Invalid email or password. Please try again.'
+        )
+        return
+      }
 
-    if (!savedUser) {
+      // Save citizen login status
+localStorage.setItem('citizenLoggedIn', 'true')
+localStorage.setItem(
+  'citizenUser',
+  JSON.stringify(data.user)
+)
+
+navigate('/')
+    } catch (error) {
+      console.error('Login error:', error)
 
       setError(
-        'No citizen account found. Please register first.'
+        'Cannot connect to the server. Please try again.'
       )
-
-      return
-
     }
-
-
-    if (
-      email.trim() === savedUser.email &&
-      password === savedUser.password
-    ) {
-
-      localStorage.setItem(
-        'citizenLoggedIn',
-        'true'
-      )
-
-      navigate('/')
-
-    } else {
-
-      setError(
-        'Invalid email or password. Please try again.'
-      )
-
-    }
-
   }
 
-
   return (
-
     <div className="login-page">
-
-
       <div className="login-card">
-
-
         <div className="login-header">
-
           <div className="login-logo">
             NB
           </div>
@@ -77,15 +70,10 @@ function Login() {
           <p>
             Sign in to access your complaint portal
           </p>
-
         </div>
 
-
         <form onSubmit={handleLogin}>
-
-
           <div className="form-group">
-
             <label>
               Email Address
             </label>
@@ -99,12 +87,9 @@ function Login() {
               }
               required
             />
-
           </div>
 
-
           <div className="form-group">
-
             <label>
               Password
             </label>
@@ -118,18 +103,13 @@ function Login() {
               }
               required
             />
-
           </div>
 
-
           {error && (
-
             <div className="login-error">
               {error}
             </div>
-
           )}
-
 
           <button
             type="submit"
@@ -137,13 +117,9 @@ function Login() {
           >
             Sign In
           </button>
-
-
         </form>
 
-
         <div className="login-footer">
-
           <p>
             Don't have an account?
           </p>
@@ -152,23 +128,16 @@ function Login() {
             Create Citizen Account
           </Link>
 
-
           <Link
             to="/"
             className="back-home"
           >
             Back to Home
           </Link>
-
         </div>
-
-
       </div>
-
     </div>
-
   )
-
 }
 
 export default Login

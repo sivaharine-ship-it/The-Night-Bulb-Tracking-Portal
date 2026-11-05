@@ -1,0 +1,174 @@
+
+/* ===== FULL SCREEN RESPONSIVE FIX ===== */
+
+html,
+body,
+#root {
+  width: 100% !important;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+#root {
+  max-width: none !important;
+}
+
+.portal {
+  display: block;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 100vh;
+  margin: 0 !important;
+  position: relative;
+  left: auto;
+  right: auto;
+}
+
+/* Full-width header */
+.site-header,
+.hero,
+.services,
+.process,
+.track,
+.footer {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+/* Desktop / Laptop */
+@media (min-width: 1025px) {
+  .header-inner {
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: 3%;
+    padding-right: 3%;
+  }
+
+  .hero-inner {
+    width: 100% !important;
+    max-width: none !important;
+    padding-left: 4%;
+    padding-right: 4%;
+  }
+
+  .section-container {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .track-inner,
+  .footer-inner {
+    width: 100% !important;
+    max-width: none !important;
+  }
+}
+
+/* Tablet */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .hero-inner {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.9fr);
+    gap: 22px;
+    padding: 40px 24px;
+  }
+
+  .hero h1 {
+    font-size: clamp(34px, 4vw, 46px);
+  }
+
+  .header-inner {
+    flex-wrap: wrap;
+  }
+
+  .header-nav {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .header-nav {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .hero-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: auto;
+    gap: 28px;
+    padding: 36px 18px;
+  }
+
+  .hero-copy,
+  .hero-panel {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .hero h1 {
+    font-size: clamp(32px, 8.5vw, 44px);
+    letter-spacing: -1px;
+  }
+
+  .section-container {
+    width: 100%;
+    max-width: none;
+  }
+
+  .services,
+  .process {
+    padding: 42px 18px;
+  }
+
+  .section-heading {
+    display: block;
+  }
+
+  .service-grid,
+  .process-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .track-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+    padding: 0;
+  }
+
+  .track-input {
+    flex-direction: column;
+  }
+
+  .track-input input,
+  .track-input button {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .footer-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+    padding: 32px 18px;
+  }
+}
